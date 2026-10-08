@@ -1,0 +1,9 @@
+.vscode/
+.vs/
+__pycache__/
+*.py[cod]
+*.class
+db.sqlite3
+.env
+venv/
+staticfiles/

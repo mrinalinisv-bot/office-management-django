@@ -1,0 +1,247 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<!-- =========================
+     SUMMARY CARDS
+========================= -->
+<div class="cards">
+    <div class="card">
+        <div class="card-info">
+            <p>Total Tasks</p>
+            <h2>{{ total_count }}</h2>
+        </div>
+        <div class="card-icon icon-blue">
+            ✓
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-info">
+            <p>Due Today (Daily)</p>
+            <h2>{{ due_today_count }}</h2>
+        </div>
+        <div class="card-icon icon-yellow">
+            ⏰
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-info">
+            <p>Nearly 10 Days Alert</p>
+            <h2>{{ in_10_days_count }}</h2>
+        </div>
+        <div class="card-icon icon-red">
+            ⚡
+        </div>
+    </div>
+
+    <div class="card">
+        <div class="card-info">
+            <p>Completed</p>
+            <h2>{{ completed_count }}</h2>
+        </div>
+        <div class="card-icon icon-green">
+            ✓
+        </div>
+    </div>
+</div>
+
+<!-- =========================
+     TWO COLUMN FOCUS AREA
+========================= -->
+<div class="two-col-layout">
+
+    <!-- 10-DAY IMPORTANT TASK ALERTS -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3>
+                <span>⚡</span> Next 10 Days Important Task Alerts
+            </h3>
+            <span style="font-size: 12px; color: #dc2626; font-weight: 600;">
+                {{ ten_day_alerts|length }} Upcoming
+            </span>
+        </div>
+
+        {% for t in ten_day_alerts %}
+        <div class="task-item">
+            <form action="{% url 'toggle_task' t.id %}" method="POST" class="task-checkbox-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="toggle-btn" title="Mark as Completed">✓</button>
+            </form>
+
+            <div class="task-content">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                    <div class="task-title">{{ t.title }}</div>
+                    <span class="badge {% if t.priority == 'Urgent' %}badge-urgent{% elif t.priority == 'High' %}badge-high{% else %}badge-medium{% endif %}">
+                        {{ t.priority }}
+                    </span>
+                </div>
+                <div class="task-meta">
+                    <span>📁 {{ t.category }}</span>
+                    <span>📅 Due: <strong>{{ t.due_date|date:"d M Y" }}</strong></span>
+                    <span class="badge badge-countdown">{{ t.status_label }}</span>
+                </div>
+                {% if t.description %}
+                <div style="font-size: 12px; color: #64748b; margin-top: 4px;">{{ t.description }}</div>
+                {% endif %}
+            </div>
+
+            <div class="task-actions">
+                <form action="{% url 'delete_task' t.id %}" method="POST" onsubmit="return confirm('Delete this task?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="delete-btn" title="Delete Task">🗑</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: #64748b; padding: 25px 15px; font-size: 14px;">
+            🎉 No urgent tasks due in the next 10 days!
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- DAILY TASKS (DUE TODAY) -->
+    <div class="panel">
+        <div class="panel-header">
+            <h3>
+                <span>📅</span> Today's Daily Tasks
+            </h3>
+            <span style="font-size: 12px; color: #ea580c; font-weight: 600;">
+                {{ daily_tasks|length }} For Today
+            </span>
+        </div>
+
+        {% for t in daily_tasks %}
+        <div class="task-item">
+            <form action="{% url 'toggle_task' t.id %}" method="POST" class="task-checkbox-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="toggle-btn" title="Mark as Completed">✓</button>
+            </form>
+
+            <div class="task-content">
+                <div class="task-title">{{ t.title }}</div>
+                <div class="task-meta">
+                    <span class="badge badge-today">Today</span>
+                    <span class="badge {% if t.priority == 'Urgent' %}badge-urgent{% elif t.priority == 'High' %}badge-high{% else %}badge-medium{% endif %}">
+                        {{ t.priority }}
+                    </span>
+                    <span>📁 {{ t.category }}</span>
+                </div>
+            </div>
+
+            <div class="task-actions">
+                <form action="{% url 'delete_task' t.id %}" method="POST" onsubmit="return confirm('Delete this task?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="delete-btn" title="Delete Task">🗑</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: #64748b; padding: 25px 15px; font-size: 14px;">
+            ✨ No pending daily tasks for today!
+        </div>
+        {% endfor %}
+
+        <div style="margin-top: 15px; text-align: center;">
+            <button type="button" class="btn btn-secondary" style="width: 100%; justify-content: center;" onclick="openModal('createTaskModal')">
+                ＋ Add Daily Task
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- =========================
+     ALL TASKS LIST & FILTER
+========================= -->
+<div class="panel">
+    <div class="panel-header">
+        <h3>
+            <span>📋</span>
+            {% if filter_type == '10days' %}Nearly 10 Days Tasks
+            {% elif filter_type == 'today' %}Daily Tasks
+            {% elif filter_type == 'overdue' %}Overdue Tasks
+            {% elif filter_type == 'completed' %}Completed Tasks
+            {% else %}All Tasks & Reminders{% endif %}
+        </h3>
+        <button type="button" class="btn btn-primary" onclick="openModal('createTaskModal')">
+            ＋ Create Task
+        </button>
+    </div>
+
+    <!-- Filter chips -->
+    <div class="filter-bar">
+        <a href="?filter=all" class="filter-chip {% if not filter_type or filter_type == 'all' %}active{% endif %}">
+            All ({{ total_count }})
+        </a>
+        <a href="?filter=10days" class="filter-chip {% if filter_type == '10days' %}active{% endif %}">
+            ⚡ Next 10 Days ({{ in_10_days_count }})
+        </a>
+        <a href="?filter=today" class="filter-chip {% if filter_type == 'today' %}active{% endif %}">
+            📅 Today ({{ due_today_count }})
+        </a>
+        <a href="?filter=overdue" class="filter-chip {% if filter_type == 'overdue' %}active{% endif %}">
+            ⚠️ Overdue ({{ overdue_tasks|length }})
+        </a>
+        <a href="?filter=completed" class="filter-chip {% if filter_type == 'completed' %}active{% endif %}">
+            ✓ Completed ({{ completed_count }})
+        </a>
+
+        <form method="GET" style="margin-left: auto; display: flex; gap: 8px;">
+            {% if filter_type %}<input type="hidden" name="filter" value="{{ filter_type }}">{% endif %}
+            <input type="text" name="q" value="{{ search_q }}" placeholder="Search tasks..." class="form-input" style="padding: 6px 12px; width: 220px;">
+            <button type="submit" class="btn btn-secondary" style="padding: 6px 12px;">Search</button>
+        </form>
+    </div>
+
+    <!-- Tasks List -->
+    <div style="display: flex; flex-direction: column;">
+        {% for t in tasks %}
+        <div class="task-item {% if t.is_completed %}completed{% endif %}">
+            <form action="{% url 'toggle_task' t.id %}" method="POST" class="task-checkbox-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="toggle-btn {% if t.is_completed %}checked{% endif %}" title="Toggle Complete">
+                    ✓
+                </button>
+            </form>
+
+            <div class="task-content">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span class="task-title">{{ t.title }}</span>
+                    <span class="badge {% if t.priority == 'Urgent' %}badge-urgent{% elif t.priority == 'High' %}badge-high{% elif t.priority == 'Medium' %}badge-medium{% else %}badge-low{% endif %}">
+                        {{ t.priority }}
+                    </span>
+                </div>
+                <div class="task-meta">
+                    <span>📁 {{ t.category }}</span>
+                    <span>📅 Due: <strong>{{ t.due_date|date:"d M Y" }}</strong></span>
+                    <span class="badge {% if t.is_completed %}badge-medium{% elif t.is_overdue %}badge-overdue{% elif t.is_due_today %}badge-today{% else %}badge-countdown{% endif %}">
+                        {{ t.status_label }}
+                    </span>
+                    {% if t.description %}
+                    <span>• {{ t.description }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="task-actions">
+                <form action="{% url 'delete_task' t.id %}" method="POST" onsubmit="return confirm('Are you sure you want to delete this task?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="delete-btn" title="Delete Task">🗑</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: #64748b; padding: 40px 20px;">
+            No tasks found in this view. Click "Create Task" to add one!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}

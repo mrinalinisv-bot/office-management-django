@@ -1,0 +1,210 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Office Task & Reminder System{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'css/style.css' %}">
+    {% block extra_head %}{% endblock %}
+</head>
+<body>
+
+    <!-- =========================
+         SIDEBAR
+    ========================= -->
+    <aside class="sidebar">
+        <div class="logo">
+            <h2>OMS Reminders</h2>
+            <p>Task & Alert Management</p>
+        </div>
+
+        <div class="menu-title">Navigation</div>
+        <nav class="menu">
+            <a href="{% url 'dashboard' %}" class="{% if active_tab == 'dashboard' and not request.GET.filter or request.GET.filter == 'all' %}active{% endif %}">
+                <span>▣</span> All Tasks & Overview
+            </a>
+            <a href="{% url 'calendar_view' %}" class="{% if active_tab == 'calendar' %}active{% endif %}">
+                <span>📅</span> Monthly Calendar View
+            </a>
+            <a href="{% url 'dashboard' %}?filter=10days" class="{% if request.GET.filter == '10days' %}active{% endif %}">
+                <span>⚡</span> 10-Day Alerts
+                {% if alert_10_days_count > 0 %}
+                <span class="nav-badge" style="background:#f59e0b;">{{ alert_10_days_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'dashboard' %}?filter=today" class="{% if request.GET.filter == 'today' %}active{% endif %}">
+                <span>✓</span> Today's Daily Tasks
+                {% if due_today_count > 0 %}
+                <span class="nav-badge" style="background:#ea580c;">{{ due_today_count }}</span>
+                {% endif %}
+            </a>
+            <a href="{% url 'dashboard' %}?filter=overdue" class="{% if request.GET.filter == 'overdue' %}active{% endif %}">
+                <span>⚠️</span> Overdue Alerts
+            </a>
+            <a href="{% url 'dashboard' %}?filter=completed" class="{% if request.GET.filter == 'completed' %}active{% endif %}">
+                <span>✨</span> Completed Tasks
+            </a>
+        </nav>
+    </aside>
+
+    <!-- =========================
+         MAIN
+    ========================= -->
+    <div class="main">
+
+        <!-- TOP BAR -->
+        <header class="topbar">
+            <h1>{% block page_heading %}Daily Tasks & 10-Day Alert System{% endblock %}</h1>
+
+            <div class="topbar-right">
+                <button type="button" class="btn btn-primary" onclick="openModal('createTaskModal')">
+                    ＋ Create Task
+                </button>
+
+                <div class="user">
+                    <div class="user-icon">U</div>
+                    <div>
+                        <strong style="font-size: 13px;">User</strong>
+                        <br>
+                        <small style="color: #64748b;">Office Workspace</small>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ========================================================
+             SCROLLING UPCOMING TASKS ALERT TICKER
+        ======================================================== -->
+        {% if scrolling_alerts %}
+        <div class="ticker-wrap">
+            <div class="ticker-heading">
+                <span>🔔 Upcoming Alerts</span>
+            </div>
+            <div class="ticker-body">
+                <div class="ticker-track">
+                    {% for a in scrolling_alerts %}
+                    <span class="ticker-item">
+                        <span class="ticker-tag {% if a.priority == 'Urgent' %}ticker-tag-urgent{% elif a.priority == 'High' %}ticker-tag-high{% else %}ticker-tag-medium{% endif %}">
+                            {{ a.priority }}
+                        </span>
+                        <strong>{{ a.title }}</strong> &nbsp;—&nbsp;
+                        <span style="color: {% if a.is_overdue %}#fca5a5{% elif a.is_due_today %}#fdba74{% else %}#fef08a{% endif %}; font-weight: 600;">
+                            {{ a.status_label }}
+                        </span>
+                    </span>
+                    {% endfor %}
+                    <!-- Duplicate loop for smooth seamless marquee looping -->
+                    {% for a in scrolling_alerts %}
+                    <span class="ticker-item">
+                        <span class="ticker-tag {% if a.priority == 'Urgent' %}ticker-tag-urgent{% elif a.priority == 'High' %}ticker-tag-high{% else %}ticker-tag-medium{% endif %}">
+                            {{ a.priority }}
+                        </span>
+                        <strong>{{ a.title }}</strong> &nbsp;—&nbsp;
+                        <span style="color: {% if a.is_overdue %}#fca5a5{% elif a.is_due_today %}#fdba74{% else %}#fef08a{% endif %}; font-weight: 600;">
+                            {{ a.status_label }}
+                        </span>
+                    </span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- FLASH MESSAGES -->
+        {% if messages %}
+        <div class="messages-container">
+            {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                <span>{{ message }}</span>
+                <button type="button" class="alert-close" onclick="this.parentElement.remove()">×</button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        <!-- PAGE CONTENT -->
+        <main class="content">
+            {% block content %}{% endblock %}
+        </main>
+    </div>
+
+    <!-- CREATE TASK MODAL -->
+    <div class="modal-backdrop" id="createTaskModal">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>＋ Create New Task / Work</h3>
+                <button type="button" class="modal-close" onclick="closeModal('createTaskModal')">&times;</button>
+            </div>
+            <form action="{% url 'create_task' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                
+                <div class="form-group">
+                    <label>Task Title *</label>
+                    <input type="text" name="title" required class="form-input" placeholder="e.g. Pay Electricity Bill, Prepare Report, Client Call">
+                </div>
+
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div class="form-group">
+                        <label>Category</label>
+                        <select name="category" class="form-input">
+                            <option value="Daily">Daily Task</option>
+                            <option value="Bills & Utility">Bills & Utility</option>
+                            <option value="Official">Official / Admin</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Priority *</label>
+                        <select name="priority" class="form-input">
+                            <option value="Urgent">🚨 Urgent</option>
+                            <option value="High" selected>⚡ High</option>
+                            <option value="Medium">🔹 Medium</option>
+                            <option value="Low">▫️ Low</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Due Date * (Alert triggers within 10 days of this date)</label>
+                    <input type="date" name="due_date" id="modalDueDate" required class="form-input" value="{{ current_today|date:'Y-m-d' }}">
+                </div>
+
+                <div class="form-group">
+                    <label>Notes / Checklist (Optional)</label>
+                    <textarea name="description" class="form-input" rows="2" placeholder="Task details, reminder info, or notes"></textarea>
+                </div>
+
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" onclick="closeModal('createTaskModal')">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Save & Schedule Alert</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script>
+        function openModal(id, prefillDate) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.add('open');
+                if (prefillDate && document.getElementById('modalDueDate')) {
+                    document.getElementById('modalDueDate').value = prefillDate;
+                }
+            }
+        }
+        function closeModal(id) {
+            const el = document.getElementById(id);
+            if (el) el.classList.remove('open');
+        }
+        window.addEventListener('click', function(e) {
+            if (e.target.classList.contains('modal-backdrop')) {
+                e.target.classList.remove('open');
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

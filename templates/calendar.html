@@ -1,0 +1,155 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Monthly Calendar View - Office Management System{% endblock %}
+{% block page_heading %}Monthly Calendar View{% endblock %}
+
+{% block content %}
+<div class="calendar-header-bar">
+    <div style="display: flex; align-items: center; gap: 15px;">
+        <h2 style="margin: 0; font-size: 22px; color: #0f172a;">
+            {{ month_name }} {{ year }}
+        </h2>
+        <span class="badge badge-medium" style="font-size: 12px;">
+            {{ total_month_tasks }} Works Scheduled
+        </span>
+    </div>
+
+    <div style="display: flex; align-items: center; gap: 10px;">
+        <div class="cal-nav-group">
+            <a href="?year={{ prev_year }}&month={{ prev_month }}" class="btn btn-secondary cal-nav-btn">
+                ← Prev
+            </a>
+            <a href="{% url 'calendar_view' %}" class="btn btn-secondary cal-nav-btn">
+                Today
+            </a>
+            <a href="?year={{ next_year }}&month={{ next_month }}" class="btn btn-secondary cal-nav-btn">
+                Next →
+            </a>
+        </div>
+        <button type="button" class="btn btn-primary" onclick="openModal('createTaskModal')">
+            ＋ Add Work
+        </button>
+    </div>
+</div>
+
+<!-- =========================
+     MONTHLY CALENDAR GRID
+========================= -->
+<div class="month-calendar-card">
+    <table class="month-calendar-table">
+        <thead>
+            <tr>
+                <th>Sun</th>
+                <th>Mon</th>
+                <th>Tue</th>
+                <th>Wed</th>
+                <th>Thu</th>
+                <th>Fri</th>
+                <th>Sat</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for week in calendar_weeks %}
+            <tr>
+                {% for day in week %}
+                <td class="cal-day-cell {% if not day.is_current_month %}dimmed-day{% endif %} {% if day.is_today %}today-cell{% endif %}"
+                    onclick="if(event.target === this || event.target.classList.contains('day-num-label')) openModal('createTaskModal', '{{ day.date|date:'Y-m-d' }}');">
+                    
+                    <div class="day-cell-top">
+                        <span class="day-num-label {% if day.is_today %}today-badge{% endif %}">
+                            {{ day.day_num }}
+                        </span>
+                        {% if day.is_today %}
+                        <span class="today-text-tag">TODAY</span>
+                        {% endif %}
+                    </div>
+
+                    <div class="day-tasks-container">
+                        {% for t in day.tasks %}
+                        <div class="cal-task-pill {% if t.priority == 'Urgent' %}pill-urgent{% elif t.priority == 'High' %}pill-high{% elif t.priority == 'Medium' %}pill-medium{% else %}pill-low{% endif %} {% if t.is_completed %}pill-completed{% endif %}"
+                             title="{{ t.title }} ({{ t.priority }}) - Click to toggle">
+                            
+                            <form action="{% url 'toggle_task' t.id %}" method="POST" style="margin: 0; display: inline;">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="cal-pill-check" title="Toggle Complete">
+                                    {% if t.is_completed %}✓{% else %}○{% endif %}
+                                </button>
+                            </form>
+
+                            <span class="cal-pill-title">{{ t.title }}</span>
+
+                            <form action="{% url 'delete_task' t.id %}" method="POST" style="margin: 0; display: inline;" onsubmit="return confirm('Delete this work?');">
+                                {% csrf_token %}
+                                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                                <button type="submit" class="cal-pill-del" title="Delete">×</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </td>
+                {% endfor %}
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+<!-- =========================
+     MONTHLY WORKS LIST
+========================= -->
+<div class="panel" style="margin-top: 25px;">
+    <div class="panel-header">
+        <h3>
+            <span>📋</span> Works & Deadlines for {{ month_name }} {{ year }}
+        </h3>
+        <span style="font-size: 13px; color: #64748b;">
+            Showing {{ month_tasks|length }} task{{ month_tasks|length|pluralize }}
+        </span>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 8px;">
+        {% for t in month_tasks %}
+        <div class="task-item {% if t.is_completed %}completed{% endif %}">
+            <form action="{% url 'toggle_task' t.id %}" method="POST" class="task-checkbox-form">
+                {% csrf_token %}
+                <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                <button type="submit" class="toggle-btn {% if t.is_completed %}checked{% endif %}" title="Toggle Complete">✓</button>
+            </form>
+
+            <div class="task-content">
+                <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                    <span class="task-title">{{ t.title }}</span>
+                    <span class="badge {% if t.priority == 'Urgent' %}badge-urgent{% elif t.priority == 'High' %}badge-high{% elif t.priority == 'Medium' %}badge-medium{% else %}badge-low{% endif %}">
+                        {{ t.priority }}
+                    </span>
+                </div>
+                <div class="task-meta">
+                    <span>📁 {{ t.category }}</span>
+                    <span>📅 Due: <strong>{{ t.due_date|date:"d M Y" }}</strong></span>
+                    <span class="badge {% if t.is_completed %}badge-medium{% elif t.is_overdue %}badge-overdue{% elif t.is_due_today %}badge-today{% else %}badge-countdown{% endif %}">
+                        {{ t.status_label }}
+                    </span>
+                    {% if t.description %}
+                    <span>• {{ t.description }}</span>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="task-actions">
+                <form action="{% url 'delete_task' t.id %}" method="POST" onsubmit="return confirm('Delete this work?');">
+                    {% csrf_token %}
+                    <input type="hidden" name="next" value="{{ request.get_full_path }}">
+                    <button type="submit" class="delete-btn" title="Delete Task">🗑</button>
+                </form>
+            </div>
+        </div>
+        {% empty %}
+        <div style="text-align: center; color: #64748b; padding: 25px; font-size: 14px;">
+            No works scheduled for {{ month_name }} {{ year }}. Click on any calendar day or "Add Work" to schedule one!
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endblock %}
