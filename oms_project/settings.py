@@ -12,24 +12,49 @@ https://docs.djangoproject.com/en/6.1/ref/settings/
 
 import os
 from pathlib import Path
+import dj_database_url
 
-# Build paths inside the project like this: BASE_DIR / 'subdir'.
+
+# ============================================================
+# BASE DIRECTORY
+# ============================================================
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
-# Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/6.1/howto/deployment/checklist/
+# ============================================================
+# SECURITY
+# ============================================================
 
-# SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-a#(met=r%elaxo@+hr8wq!1jh=3$7h*lb7^h1-!tix@k8qrjza'
+# For local development, this fallback key is used.
+# In production, the SECRET_KEY will come from an environment variable.
+SECRET_KEY = os.environ.get(
+    'SECRET_KEY',
+    'django-insecure-local-development-key-change-before-production'
+)
 
-# SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# Local development = True
+# Production server will set DEBUG=False
+DEBUG = os.environ.get('DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = ['*']
+
+# Allowed hosts
+# Local development:
+# localhost
+# 127.0.0.1
+#
+# When deployed, this will be supplied through the
+# ALLOWED_HOSTS environment variable.
+
+ALLOWED_HOSTS = os.environ.get(
+    'ALLOWED_HOSTS',
+    'localhost,127.0.0.1'
+).split(',')
 
 
-# Application definition
+# ============================================================
+# APPLICATIONS
+# ============================================================
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -38,11 +63,22 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+
+    # Office Management System
     'core',
 ]
 
+
+# ============================================================
+# MIDDLEWARE
+# ============================================================
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+
+    # WhiteNoise serves static files in production
+    'whitenoise.middleware.WhiteNoiseMiddleware',
+
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -51,88 +87,214 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+
+# ============================================================
+# URL CONFIGURATION
+# ============================================================
+
 ROOT_URLCONF = 'oms_project.urls'
+
+
+# ============================================================
+# TEMPLATES
+# ============================================================
 
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR / 'templates'],
+
+        'DIRS': [
+            BASE_DIR / 'templates'
+        ],
+
         'APP_DIRS': True,
+
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.request',
+
                 'django.contrib.auth.context_processors.auth',
+
                 'django.contrib.messages.context_processors.messages',
+
+                # Office Management System global context
                 'core.context_processors.oms_global_context',
             ],
         },
     },
 ]
 
+
+# ============================================================
+# WSGI
+# ============================================================
+
 WSGI_APPLICATION = 'oms_project.wsgi.application'
 
 
-# Database
-# https://docs.djangoproject.com/en/6.1/ref/settings/#databases
+# ============================================================
+# DATABASE
+# ============================================================
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('DB_NAME', 'oms_db'),
-        'USER': os.environ.get('DB_USER', 'postgres'),
-        'PASSWORD': os.environ.get('DB_PASSWORD', 'postgres'),
-        'HOST': os.environ.get('DB_HOST', 'localhost'),
-        'PORT': os.environ.get('DB_PORT', '5432'),
+# When deployed online, DATABASE_URL will be provided
+# by the hosting provider.
+#
+# When running locally, the PostgreSQL settings below
+# will be used.
+
+DATABASE_URL = os.environ.get('DATABASE_URL')
+
+
+if DATABASE_URL:
+
+    # Online PostgreSQL database
+    DATABASES = {
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=600,
+            ssl_require=True
+        )
     }
-}
+
+else:
+
+    # Local PostgreSQL database
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+
+            'NAME': os.environ.get(
+                'DB_NAME',
+                'oms_db'
+            ),
+
+            'USER': os.environ.get(
+                'DB_USER',
+                'postgres'
+            ),
+
+            'PASSWORD': os.environ.get(
+                'DB_PASSWORD',
+                'postgres'
+            ),
+
+            'HOST': os.environ.get(
+                'DB_HOST',
+                'localhost'
+            ),
+
+            'PORT': os.environ.get(
+                'DB_PORT',
+                '5432'
+            ),
+        }
+    }
 
 
-# Password validation
-# https://docs.djangoproject.com/en/6.1/ref/settings/#auth-password-validators
+# ============================================================
+# PASSWORD VALIDATION
+# ============================================================
 
 AUTH_PASSWORD_VALIDATORS = [
     {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
     },
+
     {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.MinimumLengthValidator',
     },
+
     {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
+
     {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+        'NAME':
+        'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
 
 
-# Internationalization
-# https://docs.djangoproject.com/en/6.1/topics/i18n/
+# ============================================================
+# INTERNATIONALIZATION
+# ============================================================
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# India Standard Time
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
 USE_TZ = True
 
 
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/6.1/howto/static-files/
+# ============================================================
+# STATIC FILES
+# ============================================================
 
 STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
+
+# Your existing static folder
+STATICFILES_DIRS = [
+    BASE_DIR / 'static'
+]
+
+# Folder created by collectstatic
 STATIC_ROOT = BASE_DIR / 'staticfiles'
 
+
+# WhiteNoise static file compression
+STATICFILES_STORAGE = (
+    'whitenoise.storage.CompressedManifestStaticFilesStorage'
+)
+
+
+# ============================================================
+# MEDIA / UPLOADED FILES
+# ============================================================
+
 MEDIA_URL = '/media/'
+
 MEDIA_ROOT = BASE_DIR / 'media'
 
-# Email
-# https://docs.djangoproject.com/en/6.1/topics/email/#topic-email-configuration
 
-MAILERS = {
-    'default': {
-        'BACKEND': 'django.core.mail.backends.console.EmailBackend',
-    },
-}
+# ============================================================
+# EMAIL
+# ============================================================
+
+# For development, emails will appear in the terminal.
+#
+# Later, when the application is online, we can configure
+# Gmail/SMTP or another email service.
+
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+
+
+# ============================================================
+# CSRF TRUSTED ORIGINS
+# ============================================================
+
+# During local development this list can remain empty.
+#
+# When deployed, we will add the online URL through the
+# CSRF_TRUSTED_ORIGINS environment variable.
+
+CSRF_TRUSTED_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        'CSRF_TRUSTED_ORIGINS',
+        ''
+    ).split(',')
+    if origin.strip()
+]
+
+
+# ============================================================
+# DEFAULT PRIMARY KEY FIELD
+# ============================================================
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
