@@ -17,14 +17,15 @@ DEBUG = os.environ.get("DEBUG", "True").strip().lower() in {
     "true", "1", "yes"
 }
 
+
 ALLOWED_HOSTS = [
-    host.strip()
-    for host in os.environ.get(
-        "ALLOWED_HOSTS",
-        "localhost,127.0.0.1",
-    ).split(",")
-    if host.strip()
+    "office-management-django-5.onrender.com",
+    "office-management-django-4.onrender.com",
+    "localhost",
+    "127.0.0.1",
 ]
+
+
 
 
 # Applications
