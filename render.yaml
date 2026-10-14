@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: oms-reminders
+    runtime: python
+    buildCommand: "./build.sh"
+    startCommand: "gunicorn oms_project.wsgi:application"
+    envVars:
+      - key: DATABASE_URL
+        fromDatabase:
+          name: oms-db
+          property: connectionString
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOWED_HOSTS
+        value: ".onrender.com,omsreminders.com,www.omsreminders.com,localhost"
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://*.onrender.com,https://omsreminders.com,https://www.omsreminders.com"
+
+databases:
+  - name: oms-db
+    plan: free

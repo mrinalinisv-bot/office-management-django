@@ -18,12 +18,22 @@ DEBUG = os.environ.get("DEBUG", "True").strip().lower() in {
 }
 
 
-ALLOWED_HOSTS = [
-    "office-management-django-5.onrender.com",
-    "office-management-django-4.onrender.com",
-    "localhost",
-    "127.0.0.1",
-]
+ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS")
+if ALLOWED_HOSTS_ENV:
+    ALLOWED_HOSTS = [
+        host.strip()
+        for host in ALLOWED_HOSTS_ENV.split(",")
+        if host.strip()
+    ]
+else:
+    ALLOWED_HOSTS = [
+        "*",
+        ".onrender.com",
+        "omsreminders.com",
+        "www.omsreminders.com",
+        "localhost",
+        "127.0.0.1",
+    ]
 
 
 
@@ -78,13 +88,13 @@ WSGI_APPLICATION = "oms_project.wsgi.application"
 
 
 # Database
+DATABASE_URL = os.environ.get("DATABASE_URL")
 USE_SQLITE = os.environ.get("USE_SQLITE", "false").strip().lower() in {
     "true", "1", "yes"
 }
-DATABASE_URL = os.environ.get("DATABASE_URL")
 
 if USE_SQLITE:
-    # Use SQLite when USE_SQLITE=true (set this on Render for SQLite).
+    # Explicit SQLite mode
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
@@ -93,18 +103,30 @@ if USE_SQLITE:
     }
 
 elif DATABASE_URL:
-    # Use the hosted PostgreSQL database when DATABASE_URL is provided.
+    # Hosted PostgreSQL (Render PostgreSQL, Neon, Supabase, etc.)
+    # Do not force sslmode=require for internal connections (dpg-..., .internal, localhost)
+    is_internal = any(k in DATABASE_URL for k in ["localhost", "127.0.0.1", "dpg-", ".internal"])
+    ssl_require = False if is_internal else (os.environ.get("DB_SSL_REQUIRE", "false").lower() in ("true", "1", "yes"))
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
             conn_max_age=600,
-            ssl_require=True,
+            ssl_require=ssl_require,
         )
     }
 
+elif os.environ.get("RENDER"):
+    # Running on Render without a PostgreSQL DATABASE_URL:
+    # Auto-fallback to SQLite so the app NEVER fails to deploy!
+    DATABASES = {
+        "default": {
+            "ENGINE": "django.db.backends.sqlite3",
+            "NAME": BASE_DIR / "db.sqlite3",
+        }
+    }
+
 else:
-    # Local PostgreSQL defaults. Change these if your local PostgreSQL
-    # database name, username, or password is different.
+    # Local development: default to local PostgreSQL oms_db
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.postgresql",
@@ -179,12 +201,27 @@ MEDIA_ROOT = BASE_DIR / "media"
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
 
-# CSRF trusted origins, supplied as comma-separated URLs in the environment.
-CSRF_TRUSTED_ORIGINS = [
-    origin.strip()
-    for origin in os.environ.get("CSRF_TRUSTED_ORIGINS", "").split(",")
-    if origin.strip()
-]
+WHITENOISE_MANIFEST_STRICT = False
+
+
+# CSRF trusted origins: defaults support Render domains and custom domain omsreminders.com
+CSRF_TRUSTED_ORIGINS_ENV = os.environ.get("CSRF_TRUSTED_ORIGINS")
+if CSRF_TRUSTED_ORIGINS_ENV:
+    CSRF_TRUSTED_ORIGINS = [
+        origin.strip()
+        for origin in CSRF_TRUSTED_ORIGINS_ENV.split(",")
+        if origin.strip()
+    ]
+else:
+    CSRF_TRUSTED_ORIGINS = [
+        "https://*.onrender.com",
+        "https://omsreminders.com",
+        "https://www.omsreminders.com",
+        "http://localhost:8000",
+        "http://127.0.0.1:8000",
+        "http://localhost",
+        "http://127.0.0.1",
+    ]
 
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
