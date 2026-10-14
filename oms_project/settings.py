@@ -18,22 +18,11 @@ DEBUG = os.environ.get("DEBUG", "True").strip().lower() in {
 }
 
 
-ALLOWED_HOSTS_ENV = os.environ.get("ALLOWED_HOSTS")
-if ALLOWED_HOSTS_ENV:
-    ALLOWED_HOSTS = [
-        host.strip()
-        for host in ALLOWED_HOSTS_ENV.split(",")
-        if host.strip()
-    ]
-else:
-    ALLOWED_HOSTS = [
-        "*",
-        ".onrender.com",
-        "omsreminders.com",
-        "www.omsreminders.com",
-        "localhost",
-        "127.0.0.1",
-    ]
+# Accept all hosts so Render subdomains, custom domains, and proxies work seamlessly
+ALLOWED_HOSTS = ["*"]
+
+# Trust Render reverse proxy for HTTPS detection
+SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")
 
 
 
