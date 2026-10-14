@@ -95,7 +95,7 @@ elif DATABASE_URL:
     # Hosted PostgreSQL (Render PostgreSQL, Neon, Supabase, etc.)
     # Do not force sslmode=require for internal connections (dpg-..., .internal, localhost)
     is_internal = any(k in DATABASE_URL for k in ["localhost", "127.0.0.1", "dpg-", ".internal"])
-    ssl_require = False if is_internal else (os.environ.get("DB_SSL_REQUIRE", "false").lower() in ("true", "1", "yes"))
+    ssl_require = False if is_internal else (os.environ.get("DB_SSL_REQUIRE", "true").lower() in ("true", "1", "yes"))
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
