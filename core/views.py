@@ -187,3 +187,13 @@ def delete_task(request, pk):
     messages.warning(request, f'Task "{title}" removed.')
     next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/'
     return redirect(next_url)
+
+
+def db_status(request):
+    from django.http import JsonResponse
+    from django.db import connection
+    return JsonResponse({
+        'vendor': connection.vendor,
+        'task_count': Task.objects.count(),
+        'version': 'v2-neon',
+    })
