@@ -19,7 +19,9 @@ class Command(BaseCommand):
 
         today = timezone.localdate() if timezone.is_aware(timezone.now()) else datetime.date.today()
 
-        Task.objects.all().delete()
+        if Task.objects.exists():
+            self.stdout.write(self.style.WARNING(f'Database already contains {Task.objects.count()} tasks. Skipping seed to prevent data loss.'))
+            return
 
         sample_tasks = [
             # 1. Daily tasks (Due Today)

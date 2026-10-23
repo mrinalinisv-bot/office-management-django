@@ -157,7 +157,11 @@ def create_task(request):
         task = form.save()
         messages.success(request, f'Task "{task.title}" created with {task.priority} priority!')
     else:
-        messages.error(request, 'Failed to add task. Please check your inputs.')
+        err_list = []
+        for field, errors in form.errors.items():
+            err_list.append(f"{field}: {', '.join(errors)}")
+        err_str = "; ".join(err_list) if err_list else "Invalid form submission"
+        messages.error(request, f'Failed to add task: {err_str}')
     next_url = request.POST.get('next') or request.META.get('HTTP_REFERER') or '/'
     return redirect(next_url)
 

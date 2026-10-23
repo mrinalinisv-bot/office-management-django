@@ -6,9 +6,7 @@ services:
     startCommand: "python manage.py migrate && gunicorn oms_project.wsgi:application"
     envVars:
       - key: DATABASE_URL
-        fromDatabase:
-          name: oms-db
-          property: connectionString
+        value: "postgresql://neondb_owner:npg_9t5RjvHVesWU@ep-tiny-sound-b571duzk-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require"
       - key: SECRET_KEY
         generateValue: true
       - key: DEBUG
@@ -17,7 +15,3 @@ services:
         value: "*"
       - key: CSRF_TRUSTED_ORIGINS
         value: "https://*.onrender.com,https://omsreminders.com,https://www.omsreminders.com"
-
-databases:
-  - name: oms-db
-    plan: free

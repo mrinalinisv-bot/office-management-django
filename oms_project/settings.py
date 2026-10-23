@@ -89,8 +89,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "oms_project.wsgi.application"
 
 
-# Database
-DATABASE_URL = os.environ.get("DATABASE_URL")
+# Database Configuration
+DEFAULT_DATABASE_URL = "postgresql://neondb_owner:npg_9t5RjvHVesWU@ep-tiny-sound-b571duzk-pooler.c-7.us-east-2.aws.neon.tech/neondb?sslmode=require"
+DATABASE_URL = os.environ.get("DATABASE_URL") or DEFAULT_DATABASE_URL
 USE_SQLITE = os.environ.get("USE_SQLITE", "false").strip().lower() in {
     "true", "1", "yes"
 }
@@ -105,38 +106,24 @@ if USE_SQLITE:
     }
 
 elif DATABASE_URL:
-    # Hosted PostgreSQL (Render PostgreSQL, Neon, Supabase, etc.)
-    # Do not force sslmode=require for internal connections (dpg-..., .internal, localhost)
+    # Hosted PostgreSQL (Neon, Render PostgreSQL, Supabase, etc.)
     is_internal = any(k in DATABASE_URL for k in ["localhost", "127.0.0.1", "dpg-", ".internal"])
     ssl_require = False if is_internal else (os.environ.get("DB_SSL_REQUIRE", "true").lower() in ("true", "1", "yes"))
+    conn_max_age = 0 if "-pooler" in DATABASE_URL else 600
     DATABASES = {
         "default": dj_database_url.parse(
             DATABASE_URL,
-            conn_max_age=600,
+            conn_max_age=conn_max_age,
             ssl_require=ssl_require,
         )
     }
 
-elif os.environ.get("RENDER"):
-    # Running on Render without a PostgreSQL DATABASE_URL:
-    # Auto-fallback to SQLite so the app NEVER fails to deploy!
+else:
+    # Fallback SQLite
     DATABASES = {
         "default": {
             "ENGINE": "django.db.backends.sqlite3",
             "NAME": BASE_DIR / "db.sqlite3",
-        }
-    }
-
-else:
-    # Local development: default to local PostgreSQL oms_db
-    DATABASES = {
-        "default": {
-            "ENGINE": "django.db.backends.postgresql",
-            "NAME": os.environ.get("DB_NAME", "oms_db"),
-            "USER": os.environ.get("DB_USER", "postgres"),
-            "PASSWORD": os.environ.get("DB_PASSWORD", "postgres"),
-            "HOST": os.environ.get("DB_HOST", "localhost"),
-            "PORT": os.environ.get("DB_PORT", "5432"),
         }
     }
 
